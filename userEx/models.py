@@ -93,6 +93,7 @@ class Order(models.Model):
         if not self.order_id:
             self.order_id = self.generate_order_id()
 
+
     def generate_sales_order_number(self):
         """Generate a unique sales order number (custom logic)."""
         self.sales_order_number = f"SO-{timezone.now().strftime('%Y%m%d')}-{self.pk}"

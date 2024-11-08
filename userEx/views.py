@@ -1,10 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import ClientSerializer
+from .serializers import *
 from .models import *
 from datetime import datetime
-
+from rest_framework.decorators import api_view
+from decimal import Decimal
 class CreateClientAPIView(APIView):
     def post(self, request, *args, **kwargs):
         # Extract data from the request body
@@ -32,10 +33,12 @@ class CreateClientAPIView(APIView):
             return Response(client_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 class CreateOrderAPIView(APIView):
     def post(self, request, *args, **kwargs):
         client_id = request.data.get('client_id')
         order_date = request.data.get('order_date')
+        # Validate input
         if not client_id or not order_date:
             return Response({"error": "client_id and order_date are required."}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -50,9 +53,153 @@ class CreateOrderAPIView(APIView):
             client=client,
             order_date=order_date
         )
+        order.save()
         return Response({
             "order_id": order.order_id,
-            "sales_order_number": order.sales_order_number,
+            "sales_order_number": order.sales_order_number, 
             "order_date": order.order_date,
             "client_id": client.client_id
         }, status=status.HTTP_201_CREATED)
+# Assume these models are already defined
+@api_view(['POST'])
+def serviceSelectionView(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+    except Order.DoesNotExist:
+        return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    services_data = request.data.get('services_selected')
+    billing_data = request.data.get('billing_details')
+    billing_cycle = billing_data.get('billing_cycle', 'monthly')
+    payment_method = billing_data.get('payment_method', 'bank_transfer')
+    service_plan_id = services_data.get('service_plan', {}).get('id')
+    multilingual_agents = services_data.get('multilingual_support', {}).get('agents', 0)
+    after_hours = services_data.get('after_hours_holiday_premium', {}).get('hours', 0)
+    technical_hours = services_data.get('technical_support', {}).get('hours', 0)
+    fastrak_price = services_data.get('fastrak_briefcase', {}).get('price_per_month', 0)
+    starter_prosiwo_price = services_data.get('starter_prosiwo', {}).get('price_per_month', 0)
+
+    try:
+        service_plan = ServicePlan.objects.get(id=service_plan_id)
+    except ServicePlan.DoesNotExist:
+        return Response({"error": "Service plan not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    multilingual_price = Decimal(multilingual_agents) * Decimal('100.00')  # $100 per multilingual agent
+    after_hours_price = Decimal(after_hours) * Decimal('10.00')  # $10 per hour for after-hours support
+    technical_price = Decimal(technical_hours) * Decimal('10.00')  # $10 per hour for technical support
+    fastrak_price = Decimal(fastrak_price)  # price per month
+    starter_prosiwo_price = Decimal(starter_prosiwo_price)
+
+    total_price = service_plan.price + multilingual_price + after_hours_price + technical_price + fastrak_price + starter_prosiwo_price
+
+    # Apply discount if annual billing
+    discount = Decimal('0.00')
+    if billing_cycle == 'annual':
+        discount = total_price * Decimal('0.10')
+        total_price -= discount
+
+    processing_fee = Decimal('0.00')
+    if payment_method == 'credit_card':
+        processing_fee = total_price * Decimal('0.02')  # 2% processing fee for credit card
+        total_price += processing_fee
+
+    # Create or update ServiceSelection
+    service_selection, created = ServiceSelection.objects.get_or_create(
+        order=order,
+        defaults={
+            'service_plan': service_plan,
+            'multilingual_support_agents': multilingual_agents,
+            'after_hours_support_hours': after_hours,
+            'technical_support_hours': technical_hours,
+            'fastrak_briefcase_price': fastrak_price,
+            'starter_prosiwo_price': starter_prosiwo_price
+        }
+    )
+
+    # Calculate the total from ServiceSelection and update the order total
+    order.total_price = service_selection.calculate_total()
+    order.save()
+
+    # Create or update the billing info
+    billing, created = Billing.objects.get_or_create(
+        order=order,
+        defaults={
+            'client': order.client,
+            'billing_cycle': billing_cycle,
+            'payment_method': payment_method,
+            'discount': discount,
+            'service_plan': service_plan,
+        }
+    )
+
+    billing.total_amount = total_price
+    billing.save()
+
+    # Prepare response data
+    response_data = {
+        "order_id": order_id,
+        "client": {
+            "client_id": order.client.client_id,
+            "client_email": order.client.client_email,
+            "business_name": order.client.business_name,
+        },
+        "services_selected": {
+            "service_plan": {
+                "name": service_plan.name,
+                "price": service_plan.price,
+            },
+            "multilingual_support": {
+                "agents": multilingual_agents,
+                "price_per_agent": 100.00,
+                "total_price": multilingual_price,
+            },
+            "after_hours_holiday_premium": {
+                "hours": after_hours,
+                "price_per_hour": 10.00,
+                "total_price": after_hours_price,
+            },
+            "technical_support": {
+                "hours": technical_hours,
+                "price_per_hour": 10.00,
+                "total_price": technical_price,
+            },
+            "fastrak_briefcase": {
+                "price_per_month": fastrak_price,
+            },
+            "starter_prosiwo": {
+                "price_per_month": starter_prosiwo_price,
+            }
+        },
+        "billing_details": {
+            "billing_cycle": billing_cycle,
+            "payment_method": payment_method,
+            "discount": discount,
+            "processing_fee": processing_fee,
+        },
+        "total_amount": {
+            "subtotal": total_price + discount,
+            "total_after_discount": total_price,
+        }
+    }
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def create_service_plan(request):
+    """
+    API to create a new service plan with name, description, and price.
+    """
+    if request.method == 'POST':
+        # Deserialize the incoming data
+        serializer = ServicePlanSerializer(data=request.data)
+
+        # Check if the data is valid
+        if serializer.is_valid():
+            # Save the new service plan to the database
+            serializer.save()
+            # Return the serialized data with a 201 Created response
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            # If data is not valid, return validation errors
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.utils import timezone
 import random
@@ -21,59 +22,43 @@ class Client(models.Model):
 
 # Service Plan model to store available service plans
 class ServicePlan(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    PLAN_CHOICES = [
+        ('basic', 'Basic Plan'),
+        ('normal', 'Normal Plan'),
+        ('professional', 'Professional Plan'),
+        ('premium', 'Premium Plan'),
+        ('enterprise', 'Enterprise Plan'),
+    ]
+    
+    name = models.CharField(max_length=20, choices=PLAN_CHOICES, unique=True, default='basic')  # Default set to 'basic'
+    description = models.TextField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)  # Plan price
+
     def __str__(self):
-        return self.name
+        return f"{self.get_name_display()} (${self.price})"
+
 # Add-on services that can be linked to orders
-class AddOnService(models.Model):
-    name = models.CharField(max_length=255)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    order = models.ForeignKey('Order', related_name='addon_services', on_delete=models.CASCADE)
-    def __str__(self):
-        return f"{self.name} (${self.price})"
-
-# The Order model
-# Multilingual support model
-class MultilingualSupport(models.Model):
-    order = models.ForeignKey('Order', related_name='multilingual_support', on_delete=models.CASCADE, blank=True, null=True)
-    agents = models.PositiveIntegerField(default=0)  # Number of agents (1 to 10)
-
-    def calculate_price(self):
-        return self.agents * 100
-
-# After-hours/holiday premium model
-class AfterHoursHolidayPremium(models.Model):
-    order = models.ForeignKey('Order', related_name='after_hours_holiday_premium', on_delete=models.CASCADE, blank=True, null=True)
-    hours = models.PositiveIntegerField(default=0)  # Number of hours
-
-    def calculate_price(self):
-        return self.hours * 10
-
-# Technical support model
-class TechnicalSupport(models.Model):
-    order = models.ForeignKey('Order', related_name='technical_support', on_delete=models.CASCADE, blank=True, null=True)
-    hours = models.PositiveIntegerField(default=0)  # Number of hours
-
-    def calculate_price(self):
-        return self.hours * 10
-
-# FasTrak briefcase service model
-class FasTrakBriefcase(models.Model):
-    order = models.ForeignKey('Order', related_name='fatrak_briefcase', on_delete=models.CASCADE, blank=True, null=True)
-    price_per_month = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+class ServiceSelection(models.Model):
+    order = models.ForeignKey('Order', related_name='service_selections', on_delete=models.CASCADE)
+    service_plan = models.ForeignKey('ServicePlan', on_delete=models.CASCADE)
+    
+    multilingual_support_agents = models.PositiveIntegerField(default=0)
+    after_hours_support_hours = models.PositiveIntegerField(default=0)
+    technical_support_hours = models.PositiveIntegerField(default=0)
+    fastrak_briefcase_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    starter_prosiwo_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    def calculate_total(self):
+        multilingual_price = self.multilingual_support_agents * Decimal('100.00')  # $100 per multilingual agent
+        after_hours_price = self.after_hours_support_hours * Decimal('10.00')  # $10 per hour for after-hours support
+        technical_price = self.technical_support_hours * Decimal('10.00')  # $10 per hour for technical support
+        total_price = (self.service_plan.price + multilingual_price + after_hours_price + 
+                       technical_price + self.fastrak_briefcase_price + self.starter_prosiwo_price)
+        return total_price
 
     def __str__(self):
-        return "FasTrak Briefcase Service"
+        return f"Service Selection for Order #{self.order.sales_order_number}"
 
-# Starter ProSIWO software service model
-class StarterProSIWOSoftwareService(models.Model):
-    order = models.ForeignKey('Order', related_name='starter_prosiwo', on_delete=models.CASCADE, blank=True, null=True)
-    price_per_month = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
-    def __str__(self):
-        return "Starter ProSIWO Software Service"
 
 # Billing model for handling payment cycles and methods
 class Order(models.Model):
@@ -92,13 +77,10 @@ class Order(models.Model):
     def save(self, *args, **kwargs):
         if not self.order_id:
             self.order_id = self.generate_order_id()
+        if not self.sales_order_number:
+                    self.sales_order_number = f"SO-{timezone.now().strftime('%Y%m%d')}-{self.pk or random.randint(1000, 9999)}"
 
-
-    def generate_sales_order_number(self):
-        """Generate a unique sales order number (custom logic)."""
-        self.sales_order_number = f"SO-{timezone.now().strftime('%Y%m%d')}-{self.pk}"
-        self.save()
-
+        super(Order, self).save(*args, **kwargs)
     def __str__(self):
         return f"Order #{self.sales_order_number} for {self.client.client_id}"
 class Billing(models.Model):

@@ -11,3 +11,9 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+
+
+class ServicePlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServicePlan
+        fields = ['id', 'name', 'description', 'price']

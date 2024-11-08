@@ -1,5 +1,8 @@
+from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 from rest_framework import status
 from django.conf import settings
 import stripe
@@ -34,9 +37,7 @@ class CreateClientAPIView(APIView):
             }, status=status.HTTP_201_CREATED)
         else:
             return Response(client_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
+# ===================== create order =================
 class CreateOrderAPIView(APIView):
     def post(self, request, *args, **kwargs):
         client_id = request.data.get('client_id')
@@ -64,6 +65,7 @@ class CreateOrderAPIView(APIView):
             "client_id": client.client_id
         }, status=status.HTTP_201_CREATED)
 # Assume these models are already defined
+# ===================== services selection and calculation =================
 @api_view(['POST'])
 def serviceSelectionView(request, order_id):
     try:
@@ -191,3 +193,84 @@ def create_service_plan(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# ================== stripe webhook =================
+@api_view(['POST'])
+def stripe_webhook(request):
+    payload = request.body
+    # Get the signature sent by Stripe in the headers
+    sig_header = request.headers.get('Stripe-Signature')
+    # Your webhook secret, generated from the Stripe Dashboard
+    endpoint_secret = 'whsec_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+    try:
+        # Verify the webhook signature using the payload and the secret
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except ValueError as e:
+        return JsonResponse({'error': 'Invalid payload'}, status=status.HTTP_400_BAD_REQUEST)
+    except stripe.error.SignatureVerificationError as e:
+        return JsonResponse({'error': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
+    event_type = event['type']
+    if event_type == 'payment_intent.succeeded':
+        payment_intent = event['data']['object']
+        order_id = payment_intent['metadata']['order_id']  # Custom metadata field with the order ID
+        amount_received = payment_intent['amount_received']  # Amount received (in cents)
+        client_email = payment_intent['receipt_email']  # The email associated with the payment
+        # Retrieve the order from the database using the order ID from the metadata
+        try:
+            order = Order.objects.get(id=order_id)
+        except Order.DoesNotExist:
+            return JsonResponse({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+        # Update the order status to 'Paid' since the payment succeeded
+        order.status = 'Paid'
+        order.total_price = amount_received / 100.0  # Convert cents to dollars
+        order.save()
+        send_invoice_email(order, client_email)
+        # Send a confirmation email (optional, depending on your use case)
+        # send_confirmation_email(order)  # Implement your email function as needed
+        # Return a success response to Stripe (200 OK)
+        return JsonResponse({'message': 'Payment successful and order updated'}, status=status.HTTP_200_OK)
+    elif event_type == 'payment_intent.payment_failed':
+        payment_intent = event['data']['object']
+        order_id = payment_intent['metadata']['order_id']
+        failure_message = payment_intent['last_payment_error']['message']
+        try:
+            order = Order.objects.get(id=order_id)
+        except Order.DoesNotExist:
+            return JsonResponse({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+        order.status = 'Payment Failed'
+        order.save()
+        return JsonResponse({'message': 'Payment failed and order updated'}, status=status.HTTP_200_OK)
+    else:
+        return JsonResponse({'message': 'Event type not handled'}, status=status.HTTP_200_OK)
+    
+
+# ================== send mail =================
+def send_invoice_email(order, client_email):
+    # Prepare the email subject and body using an HTML template
+    subject = f"Invoice for Order {order.id}"
+    message = render_to_string('emails/order_invoice.html', {
+        'order_id': order.id,
+        'customer_name': order.client.business_name,
+        'status': order.status,
+        'total_price': order.total_price,
+        'service_plan_name': order.service_plan.name,
+        'service_plan_price': order.service_plan.price,
+        'multilingual_agents': order.multilingual_support_agents,
+        'multilingual_support_price': order.multilingual_support_agents * 100.00,
+        'after_hours': order.after_hours_support_hours,
+        'after_hours_support_price': order.after_hours_support_hours * 10.00,
+        'technical_support_hours': order.technical_support_hours,
+        'technical_support_price': order.technical_support_hours * 10.00,
+        'fastrak_price': order.fastrak_briefcase_price,
+        'starter_prosiwo_price': order.starter_prosiwo_price,
+    })
+
+    # Send the email
+    send_mail(
+        subject,
+        message,
+        settings.EMAIL_HOST_USER,  # From email (use the email in your settings)
+        [client_email],  # To email (use the email provided by Stripe)
+        fail_silently=False,
+    )

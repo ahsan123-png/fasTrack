@@ -6,4 +6,5 @@ urlpatterns = [
     path('create-order/', CreateOrderAPIView.as_view(), name='create-order'),
     path('create-order-billing/<int:order_id>/', serviceSelectionView, name='serviceSelectionView-order'),
     path('service_plain/', create_service_plan, name='create_service_plan'),
+    path('webhook/stripe/', stripe_webhook, name='stripe-webhook'),
 ]

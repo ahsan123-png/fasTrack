@@ -42,7 +42,6 @@ class CreateOrderAPIView(APIView):
     def post(self, request, *args, **kwargs):
         client_id = request.data.get('client_id')
         order_date = request.data.get('order_date')
-        # Validate input
         if not client_id or not order_date:
             return Response({"error": "client_id and order_date are required."}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -59,12 +58,12 @@ class CreateOrderAPIView(APIView):
         )
         order.save()
         return Response({
+            "order_pk_id": order.id,
             "order_id": order.order_id,
             "sales_order_number": order.sales_order_number, 
             "order_date": order.order_date,
             "client_id": client.client_id
         }, status=status.HTTP_201_CREATED)
-# Assume these models are already defined
 # ===================== services selection and calculation =================
 @api_view(['POST'])
 def serviceSelectionView(request, order_id):
@@ -250,8 +249,6 @@ def stripe_webhook(request):
         return JsonResponse({'message': 'Payment failed and order updated'}, status=status.HTTP_200_OK)
     else:
         return JsonResponse({'message': 'Event type not handled'}, status=status.HTTP_200_OK)
-    
-
 # ================== send mail =================
 def send_invoice_email(order, client_email):
     # Prepare the email subject and body using an HTML template

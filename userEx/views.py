@@ -82,16 +82,19 @@ def serviceSelectionView(request, order_id):
     technical_hours = services_data.get('technical_support', {}).get('hours', 0)
     fastrak_price = services_data.get('fastrak_briefcase', {}).get('price_per_month', 0)
     starter_prosiwo_price = services_data.get('starter_prosiwo', {}).get('price_per_month', 0)
+    advanced_prosiwo_price = services_data.get('advanced_prosiwo', {}).get('price_per_month', 0)
     try:
         service_plan = ServicePlan.objects.get(id=service_plan_id)
     except ServicePlan.DoesNotExist:
         return Response({"error": "Service plan not found"}, status=status.HTTP_404_NOT_FOUND)
-    multilingual_price = Decimal(multilingual_agents) * Decimal('100.00')  # $100 per multilingual agent
-    after_hours_price = Decimal(after_hours) * Decimal('10.00')  # $10 per hour for after-hours support
-    technical_price = Decimal(technical_hours) * Decimal('10.00')  # $10 per hour for technical support
-    fastrak_price = Decimal(fastrak_price)  # price per month
+    multilingual_price = Decimal(multilingual_agents) * Decimal('100.00')
+    after_hours_price = Decimal(after_hours) * Decimal('10.00') 
+    technical_price = Decimal(technical_hours) * Decimal('10.00')  
+    fastrak_price = Decimal(fastrak_price)
     starter_prosiwo_price = Decimal(starter_prosiwo_price)
-    total_price = service_plan.price + multilingual_price + after_hours_price + technical_price + fastrak_price + starter_prosiwo_price
+    advanced_prosiwo_price=Decimal(advanced_prosiwo_price)
+    total_price = (service_plan.price + multilingual_price + after_hours_price +
+                technical_price + fastrak_price + starter_prosiwo_price + advanced_prosiwo_price)
     discount = Decimal('0.00')
     if billing_cycle == 'annual':
         discount = total_price * Decimal('0.10')
@@ -124,11 +127,12 @@ def serviceSelectionView(request, order_id):
         }
     )
     billing.total_amount = total_price
+    billing.discount = discount
     billing.save()
     try:
         payment_intent = stripe.PaymentIntent.create(
-            amount=int(total_price * 100),  # Convert the total price to cents
-            currency='usd',  # You can change this to your desired currency
+            amount=int(total_price * 100), 
+            currency='usd', 
             metadata={'order_id': order.id},
         )
         order.payment_intent_client_secret = payment_intent.client_secret
@@ -165,7 +169,10 @@ def serviceSelectionView(request, order_id):
                 },
                 "starter_prosiwo": {
                     "price_per_month": starter_prosiwo_price,
-                }
+                },
+                 "advanced_prosiwo": {
+                "price_per_month": advanced_prosiwo_price,
+            }
             },
             "billing_details": {
                 "billing_cycle": billing_cycle,

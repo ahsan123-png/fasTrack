@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
@@ -129,3 +130,8 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",  # If you're using CSRF tokens
     "x-requested-with",
 ]
+GOOGLE_CLIENT_SECRETS_JSON = os.path.join(BASE_DIR, 'credentials', 'client_secret.json')
+GOOGLE_REDIRECT_URI = 'http://localhost:8000/google-drive-callback/'
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # or your preferred broker
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'

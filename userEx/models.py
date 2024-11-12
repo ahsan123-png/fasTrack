@@ -49,7 +49,7 @@ class ServiceSelection(models.Model):
     starter_prosiwo_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     def calculate_total(self):
-        multilingual_price = self.multilingual_support_agents * Decimal('100.00')  # $100 per multilingual agent
+        multilingual_price = self.multilingual_support_agents * Decimal('200.00')  # $100 per multilingual agent
         after_hours_price = self.after_hours_support_hours * Decimal('10.00')  # $10 per hour for after-hours support
         technical_price = self.technical_support_hours * Decimal('10.00')  # $10 per hour for technical support
         total_price = (self.service_plan.price + multilingual_price + after_hours_price + 

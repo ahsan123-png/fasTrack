@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'userEx',
     'salesInvoice',
     'corsheaders',
+    'schedule',
 ]
 
 MIDDLEWARE = [

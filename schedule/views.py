@@ -103,4 +103,3 @@ class DocumentViewSet(viewsets.ModelViewSet):
         document = serializer.save(user=request.user)
         self.send_expiry_notification(document)
         return Response(serializer.data)
-

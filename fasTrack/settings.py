@@ -132,7 +132,7 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 GOOGLE_CLIENT_SECRETS_JSON = os.path.join(BASE_DIR, 'credentials', 'client_secret.json')
-GOOGLE_REDIRECT_URI = 'http://localhost:8000/google-drive-callback/'
+GOOGLE_REDIRECT_URI = "https://api.fastrakconnect.com/google-drive-callback/"
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # or your preferred broker
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'

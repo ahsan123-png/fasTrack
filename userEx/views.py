@@ -86,7 +86,7 @@ def serviceSelectionView(request, order_id):
         service_plan = ServicePlan.objects.get(id=service_plan_id)
     except ServicePlan.DoesNotExist:
         return Response({"error": "Service plan not found"}, status=status.HTTP_404_NOT_FOUND)
-    multilingual_price = Decimal(multilingual_agents) * Decimal('100.00')
+    multilingual_price = Decimal(multilingual_agents) * Decimal('200.00')
     after_hours_price = Decimal(after_hours) * Decimal('10.00') 
     technical_price = Decimal(technical_hours) * Decimal('10.00')  
     fastrak_price = Decimal(fastrak_price)

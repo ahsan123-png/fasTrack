@@ -16,12 +16,16 @@ from django.conf import settings
 import redis
 from rest_framework.response import Response
 from rest_framework import viewsets
+from django.http import JsonResponse, HttpResponseRedirect
+import requests
+# =================================================================
 @csrf_exempt
 def get_google_drive_service(credentials_dict):
     credentials = Credentials(**credentials_dict)
     if credentials.expired and credentials.refresh_token:
         credentials.refresh(Request())
     return build('drive', 'v3', credentials=credentials)
+# ============Google auth 2.0 =================
 @csrf_exempt
 def google_drive_oauth(request):
     flow = Flow.from_client_secrets_file(
@@ -31,19 +35,28 @@ def google_drive_oauth(request):
     )
     authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
     return redirect(authorization_url)
-
-# Callback to handle the response from Google
+# ========== Callback to handle the response from Google ===============
 @csrf_exempt
 def google_drive_callback(request):
-    flow = Flow.from_client_secrets_file(
-        settings.GOOGLE_CLIENT_SECRETS_JSON,
-        scopes=['https://www.googleapis.com/auth/drive.file'],
-        redirect_uri=settings.GOOGLE_REDIRECT_URI
-    )
-    flow.fetch_token(authorization_response=request.build_absolute_uri())
-    credentials = flow.credentials
-    request.session['credentials'] = credentials_to_dict(credentials)  # Convert to dict for session storage
-    return JsonResponse({'message': 'Google Drive connected successfully'})
+    code = request.GET.get('code')
+    if not code:
+        return JsonResponse({'error': 'Authorization code not provided'}, status=400)
+    data = {
+        'code': code,
+        'client_id': settings.GOOGLE_CLIENT_ID,
+        'client_secret': settings.GOOGLE_CLIENT_SECRET,
+        'redirect_uri': settings.GOOGLE_REDIRECT_URI,
+        'grant_type': 'authorization_code',
+    }
+    token_url = 'https://oauth2.googleapis.com/token'
+    token_response = requests.post(token_url, data=data)
+    if token_response.status_code == 200:
+        token_data = token_response.json()
+        return JsonResponse({'message': 'Google Drive connected successfully', 'token': token_data})
+
+    else:
+        return JsonResponse({'error': 'Failed to connect Google Drive'}, status=400)
+# ================ Handle credentials =============================
 @csrf_exempt
 def credentials_to_dict(credentials):
     return {
@@ -54,6 +67,7 @@ def credentials_to_dict(credentials):
         'client_secret': credentials.client_secret,
         'scopes': credentials.scopes
     }
+# ======================== upload document =================
 @csrf_exempt
 def upload_document(request):
     if request.method == 'POST':

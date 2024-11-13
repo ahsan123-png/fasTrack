@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import json
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
@@ -132,6 +133,10 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 GOOGLE_CLIENT_SECRETS_JSON = os.path.join(BASE_DIR, 'credentials', 'client_secret.json')
+with open(GOOGLE_CLIENT_SECRETS_JSON, 'r') as file:
+    google_creds = json.load(file)['web']  # Assuming the credentials are under the 'web' key
+GOOGLE_CLIENT_ID = google_creds['client_id']
+GOOGLE_CLIENT_SECRET = google_creds['client_secret']
 GOOGLE_REDIRECT_URI = "https://api.fastrakconnect.com/google-drive-callback/"
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # or your preferred broker
 CELERY_ACCEPT_CONTENT = ['json']

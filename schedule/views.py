@@ -16,12 +16,13 @@ from django.conf import settings
 import redis
 from rest_framework.response import Response
 from rest_framework import viewsets
-
+@csrf_exempt
 def get_google_drive_service(credentials_dict):
     credentials = Credentials(**credentials_dict)
     if credentials.expired and credentials.refresh_token:
         credentials.refresh(Request())
     return build('drive', 'v3', credentials=credentials)
+@csrf_exempt
 def google_drive_oauth(request):
     flow = Flow.from_client_secrets_file(
         settings.GOOGLE_CLIENT_SECRETS_JSON,
@@ -32,6 +33,7 @@ def google_drive_oauth(request):
     return redirect(authorization_url)
 
 # Callback to handle the response from Google
+@csrf_exempt
 def google_drive_callback(request):
     flow = Flow.from_client_secrets_file(
         settings.GOOGLE_CLIENT_SECRETS_JSON,
@@ -42,7 +44,7 @@ def google_drive_callback(request):
     credentials = flow.credentials
     request.session['credentials'] = credentials_to_dict(credentials)  # Convert to dict for session storage
     return JsonResponse({'message': 'Google Drive connected successfully'})
-
+@csrf_exempt
 def credentials_to_dict(credentials):
     return {
         'token': credentials.token,
@@ -89,7 +91,7 @@ def upload_document(request):
 
         return JsonResponse({'document_id': document_id}, status=201)
     return JsonResponse({'error': 'Invalid request'}, status=400)
-
+@csrf_exempt
 class DocumentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
     # permission_classes = [IsAuthenticated]

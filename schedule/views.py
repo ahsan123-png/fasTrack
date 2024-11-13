@@ -46,14 +46,15 @@ def google_drive_callback(request):
         'client_id': settings.GOOGLE_CLIENT_ID,
         'client_secret': settings.GOOGLE_CLIENT_SECRET,
         'redirect_uri': settings.GOOGLE_REDIRECT_URI,
-        'grant_type': 'authorization_code',
+        'grant_type': 'authorization_code'
     }
     token_url = 'https://oauth2.googleapis.com/token'
     token_response = requests.post(token_url, data=data)
     if token_response.status_code == 200:
         token_data = token_response.json()
-        return JsonResponse({'message': 'Google Drive connected successfully', 'token': token_data})
-
+        request.session['access_token'] = token_data['access_token']
+        request.session['refresh_token'] = token_data.get('refresh_token')
+        return HttpResponseRedirect('https://order.fastrakconnect.com/uploaddocs')
     else:
         return JsonResponse({'error': 'Failed to connect Google Drive'}, status=400)
 # ================ Handle credentials =============================
@@ -71,13 +72,9 @@ def credentials_to_dict(credentials):
 @csrf_exempt
 def upload_document(request):
     if request.method == 'POST':
-        credentials_dict = request.session.get('credentials')
-        if not credentials_dict:
+        access_token = request.session.get('access_token')
+        if not access_token:
             return JsonResponse({'error': 'User not authenticated. Please connect to Google Drive first.'}, status=403)
-        credentials = Credentials(**credentials_dict)
-        file = request.FILES.get('file')
-        if not file:
-            return JsonResponse({'error': 'No file uploaded.'}, status=400)
         title = request.POST.get('title')
         description = request.POST.get('description')
         expiry_date = request.POST.get('expiry_date')
@@ -87,23 +84,27 @@ def upload_document(request):
             return JsonResponse({'error': 'Invalid expiry date format. Use YYYY-MM-DD.'}, status=400)
         if not title or not description or not expiry_date:
             return JsonResponse({'error': 'All fields are required.'}, status=400)
-        credentials = Credentials(**credentials_dict)
-        service = get_google_drive_service(credentials)
-        file_metadata = {
-            'name': title,
-            'mimeType': file.content_type
-        }
+        file = request.FILES.get('file')
+        if not file:
+            return JsonResponse({'error': 'No file uploaded.'}, status=400)
+        credentials = Credentials(token=access_token)
+        if credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+        service = build('drive', 'v3', credentials=credentials)
+        file_metadata = {'name': title, 'mimeType': file.content_type}
         media = MediaFileUpload(file.temporary_file_path(), mimetype=file.content_type)
-        uploaded_file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-        document_id = uploaded_file.get('id')
-        Document.objects.create(
-            title=title,
-            description=description,
-            document_id=document_id,
-            expiry_date=expiry_date
-        )
-
-        return JsonResponse({'document_id': document_id}, status=201)
+        try:
+            uploaded_file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+            document_id = uploaded_file.get('id')
+            Document.objects.create(
+                title=title,
+                description=description,
+                document_id=document_id,
+                expiry_date=expiry_date
+            )
+            return JsonResponse({'document_id': document_id}, status=201)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
     return JsonResponse({'error': 'Invalid request'}, status=400)
 @csrf_exempt
 class DocumentViewSet(viewsets.ModelViewSet):

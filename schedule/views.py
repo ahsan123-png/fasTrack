@@ -135,7 +135,7 @@ def upload_document(request):
             Document.objects.create(
                 title=title,
                 description=description,
-                document_id=document_id,
+                google_drive_file_id =document_id,
                 expiry_date=expiry_date
             )
             return JsonResponse({'document_id': document_id}, status=201)

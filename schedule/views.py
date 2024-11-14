@@ -18,6 +18,17 @@ from rest_framework.response import Response
 from rest_framework import viewsets
 from django.http import JsonResponse, HttpResponseRedirect
 import requests
+import os
+from io import BytesIO
+from datetime import datetime
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
+from google.auth.transport.requests import Request
+from django.core.files.storage import FileSystemStorage
+from django.core.files.uploadedfile import InMemoryUploadedFile
 # =================================================================
 @csrf_exempt
 def get_google_drive_service(credentials_dict):
@@ -75,10 +86,8 @@ def credentials_to_dict(credentials):
 def upload_document(request):
     if request.method == 'POST':
         access_token = request.session.get('access_token')
-        access_token = request.headers.get('Authorization')
-        if not access_token or not access_token.startswith('Bearer '):
-            return JsonResponse({'error': 'No access token provided'}, status=403)
-        access_token = access_token.split(' ')[1]
+        if not access_token:
+            return JsonResponse({'error': 'User not authenticated. Please connect to Google Drive first.'}, status=403)
         title = request.POST.get('title')
         description = request.POST.get('description')
         expiry_date = request.POST.get('expiry_date')
@@ -91,15 +100,37 @@ def upload_document(request):
         file = request.FILES.get('file')
         if not file:
             return JsonResponse({'error': 'No file uploaded.'}, status=400)
+        # If the file is small, handle it in memory
+        if isinstance(file, InMemoryUploadedFile):
+            try:
+                file_content = BytesIO(file.read())
+                media = MediaIoBaseUpload(file_content, mimetype=file.content_type)
+            except Exception as e:
+                return JsonResponse({'error': f'Error processing file: {str(e)}'}, status=500)
+        else:
+            # If the file is larger, save it to disk temporarily
+            try:
+                fs = FileSystemStorage(location='/tmp')
+                filename = fs.save(file.name, file)
+                file_path = fs.url(filename)
+                media = MediaFileUpload(file_path, mimetype=file.content_type)
+            except Exception as e:
+                return JsonResponse({'error': f'Error saving file to disk: {str(e)}'}, status=500)
+        # Use credentials to connect to Google Drive
         credentials = Credentials(token=access_token)
         if credentials.expired and credentials.refresh_token:
             credentials.refresh(Request())
         service = build('drive', 'v3', credentials=credentials)
+        # Set file metadata
         file_metadata = {'name': title, 'mimeType': file.content_type}
-        media = MediaFileUpload(file.temporary_file_path(), mimetype=file.content_type)
         try:
+            # Upload the file to Google Drive
             uploaded_file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
             document_id = uploaded_file.get('id')
+            # Clean up temporary file if it was saved to disk
+            if not isinstance(file, InMemoryUploadedFile):
+                os.remove(file_path)
+            # Save document metadata in the database
             Document.objects.create(
                 title=title,
                 description=description,
@@ -108,8 +139,48 @@ def upload_document(request):
             )
             return JsonResponse({'document_id': document_id}, status=201)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+            return JsonResponse({'error': f'Error uploading file to Google Drive: {str(e)}'}, status=500)
+    return JsonResponse({'error': 'Invalid request method. Use POST to upload a document.'}, status=400)
+
+# @csrf_exempt
+# def upload_document(request):
+#     if request.method == 'POST':
+#         access_token = request.session.get('access_token')
+#         access_token = request.headers.get('Authorization')
+#         if not access_token or not access_token.startswith('Bearer '):
+#             return JsonResponse({'error': 'No access token provided'}, status=403)
+#         access_token = access_token.split(' ')[1]
+#         title = request.POST.get('title')
+#         description = request.POST.get('description')
+#         expiry_date = request.POST.get('expiry_date')
+#         try:
+#             expiry_date = datetime.strptime(expiry_date, '%Y-%m-%d')
+#         except ValueError:
+#             return JsonResponse({'error': 'Invalid expiry date format. Use YYYY-MM-DD.'}, status=400)
+#         if not title or not description or not expiry_date:
+#             return JsonResponse({'error': 'All fields are required.'}, status=400)
+#         file = request.FILES.get('file')
+#         if not file:
+#             return JsonResponse({'error': 'No file uploaded.'}, status=400)
+#         credentials = Credentials(token=access_token)
+#         if credentials.expired and credentials.refresh_token:
+#             credentials.refresh(Request())
+#         service = build('drive', 'v3', credentials=credentials)
+#         file_metadata = {'name': title, 'mimeType': file.content_type}
+#         media = MediaFileUpload(file.temporary_file_path(), mimetype=file.content_type)
+#         try:
+#             uploaded_file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+#             document_id = uploaded_file.get('id')
+#             Document.objects.create(
+#                 title=title,
+#                 description=description,
+#                 document_id=document_id,
+#                 expiry_date=expiry_date
+#             )
+#             return JsonResponse({'document_id': document_id}, status=201)
+#         except Exception as e:
+#             return JsonResponse({'error': str(e)}, status=500)
+#     return JsonResponse({'error': 'Invalid request'}, status=400)
 @csrf_exempt
 class DocumentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentSerializer

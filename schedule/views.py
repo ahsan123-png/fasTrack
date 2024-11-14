@@ -54,7 +54,9 @@ def google_drive_callback(request):
         token_data = token_response.json()
         request.session['access_token'] = token_data['access_token']
         request.session['refresh_token'] = token_data.get('refresh_token')
-        return HttpResponseRedirect('https://order.fastrakconnect.com/uploaddocs')
+        access_token = token_data['access_token']
+        redirect_url = f'https://order.fastrakconnect.com/uploaddocs?access_token={access_token}&code={code}'
+        return HttpResponseRedirect(redirect_url)
     else:
         return JsonResponse({'error': 'Failed to connect Google Drive'}, status=400)
 # ================ Handle credentials =============================

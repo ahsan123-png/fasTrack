@@ -59,10 +59,22 @@ WSGI_APPLICATION = 'fasTrack.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'fasTrak',       # Set to fastrak_db or your chosen database name
+        'USER': 'fastrak',       # Set to admin or your chosen username
+        'PASSWORD': 'wO47lZ0hNh7yPhAxQRNy',
+        'HOST': 'fastrack1.cbquw26eukq0.eu-north-1.rds.amazonaws.com',       # RDS endpoint without 'http://'
+        'PORT': '3306',
     }
 }
 

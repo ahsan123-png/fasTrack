@@ -85,9 +85,10 @@ def credentials_to_dict(credentials):
 @csrf_exempt
 def upload_document(request):
     if request.method == 'POST':
-        access_token = request.session.get('access_token')
-        if not access_token:
-            return JsonResponse({'error': 'User not authenticated. Please connect to Google Drive first.'}, status=403)
+        access_token = request.headers.get('Authorization')
+        if not access_token or not access_token.startswith('Bearer '):
+            return JsonResponse({'error': 'No access token provided'}, status=403)
+        access_token = access_token.split(' ')[1]
         title = request.POST.get('title')
         description = request.POST.get('description')
         expiry_date = request.POST.get('expiry_date')

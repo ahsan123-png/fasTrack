@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from decimal import Decimal
 from django.db import models
 from django.utils import timezone
@@ -154,3 +155,103 @@ class Document(models.Model):
 
     def __str__(self):
         return self.title
+    
+#=========== Job application Models =================
+# Main Job Application Model
+class JobApplication(models.Model):
+    name = models.CharField(max_length=100,null=True, blank=True)
+    email = models.EmailField(null=True, blank=True,default=None)
+    phone = models.CharField(max_length=15,blank=True,null=True)
+    address = models.TextField(null=True, blank=True, default=None)
+    linkedin_profile = models.URLField(blank=True, null=True)
+    terms_agreed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return self.name
+class PositionInformation(models.Model):
+    FULL_TIME = 'Full Time'
+    PART_TIME = 'Part Time'
+    EMPLOYMENT_TYPE_CHOICES = [
+        (FULL_TIME, 'Full Time'),
+        (PART_TIME, 'Part Time')
+    ]
+
+    DAY_SHIFT = 'Day'
+    NIGHT_SHIFT = 'Night'
+    SHIFT_CHOICES = [
+        (DAY_SHIFT, 'Day Shift'),
+        (NIGHT_SHIFT, 'Night Shift')
+    ]
+
+    job_application = models.OneToOneField(JobApplication, on_delete=models.CASCADE, related_name='position_info')
+    position_applied_for = models.CharField(max_length=100)
+    employment_type = models.CharField(max_length=20, choices=EMPLOYMENT_TYPE_CHOICES)
+    preferred_shift = models.CharField(max_length=20, choices=SHIFT_CHOICES, null=True, blank=True)
+    applied_date = models.DateField()
+
+    def __str__(self):
+        return self.position_applied_for
+
+
+# Step 3: Experience
+class Experience(models.Model):
+    job_application = models.ForeignKey(JobApplication, on_delete=models.CASCADE, related_name='experiences')
+    job_title = models.CharField(max_length=100)
+    company = models.CharField(max_length=100)
+    duration_from = models.DateField()
+    duration_to = models.DateField(null=True, blank=True)
+    key_responsibilities = models.TextField()
+
+    def __str__(self):
+        return self.job_title
+
+
+# Step 4: Skills & Assessments
+class SkillsAssessment(models.Model):
+    job_application = models.OneToOneField(JobApplication, on_delete=models.CASCADE, related_name='skills_assessment')
+    languages = models.CharField(max_length=200, help_text="Comma-separated values")
+    tech_skills = models.CharField(max_length=200, help_text="Comma-separated values")
+    certificates = models.TextField(blank=True, null=True)
+    tech_experience_description = models.TextField()
+
+    def __str__(self):
+        return self.tech_skills
+
+
+# Step 5: Education
+class Education(models.Model):
+    job_application = models.ForeignKey(JobApplication, on_delete=models.CASCADE, related_name='educations')
+    degree = models.CharField(max_length=100)
+    institute = models.CharField(max_length=100)
+    graduation_year = models.IntegerField()
+
+    def __str__(self):
+        return self.degree
+
+
+# Step 6: Additional Information
+class AdditionalInformation(models.Model):
+    job_application = models.OneToOneField(JobApplication, on_delete=models.CASCADE, related_name='additional_info')
+    why_interested = models.TextField()
+    strong_fit_reason = models.TextField()
+    eligible_to_work = models.BooleanField()
+    source_of_opportunity = models.CharField(max_length=50, choices=[
+        ('Referral', 'Referral'),
+        ('Social Media', 'Social Media'),
+        ('Job Portal', 'Job Portal'),
+        ('Fastrak Connect Website', 'Fastrak Connect Website')
+    ])
+
+    def __str__(self):
+        return self.why_interested
+
+
+# Step 7 & 8: Media Uploads
+class MediaUploads(models.Model):
+    job_application = models.OneToOneField(JobApplication, on_delete=models.CASCADE, related_name='media_uploads')
+    video = models.FileField(upload_to='applicant_videos/', blank=True, null=True)
+    resume = models.FileField(upload_to='resumes/',null=True, blank=True)
+    cover_letter = models.FileField(upload_to='cover_letters/',null=True, blank=True)
+
+    def __str__(self):
+        return f"Uploads for {self.job_application}"

@@ -4,7 +4,7 @@ import os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fasTrack.settings')
 app = Celery('fasTrack')
 app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks('schedule')
+# app.autodiscover_tasks('schedule')
 app.conf.beat_schedule = {
     'notify-users-every-day': {
         'task': 'schedule.tasks.notify_user',

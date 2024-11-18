@@ -5,7 +5,7 @@ import os
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fasTrack.settings')
-app = Celery('fasTrack')
+app = Celery('schedule')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 app.conf.beat_schedule = {

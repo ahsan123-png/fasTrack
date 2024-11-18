@@ -151,6 +151,8 @@ with open(GOOGLE_CLIENT_SECRETS_JSON, 'r') as file:
 GOOGLE_CLIENT_ID = google_creds['client_id']
 GOOGLE_CLIENT_SECRET = google_creds['client_secret']
 GOOGLE_REDIRECT_URI = "https://api.fastrakconnect.com/google-drive-callback/"
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # or your preferred broker
+# CELERY_BROKER_URL = 'redis://localhost:6379/0'  # or your preferred broker
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_BROKER_URL = 'redis://13.53.58.62:6379/0'
+CELERY_RESULT_BACKEND = 'redis://13.53.58.62:6379/0'

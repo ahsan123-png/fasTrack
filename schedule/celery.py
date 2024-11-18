@@ -1,17 +1,11 @@
-# driveHandler/celery.py
-from celery import Celery
-from celery.schedules import crontab
-import os
+# schedule/celery.py
 
-# Set the default Django settings module for the 'celery' program.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fasTrack.settings')
-app = Celery('schedule')
-app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks()
-app.conf.beat_schedule = {
-    'notify-users-every-day': {
-        'task': 'your_app.tasks.notify_user',
-        'schedule': crontab(hour=8, minute=0),
-    },
-}
+from __future__ import absolute_import, unicode_literals
+
+# Import the main Celery application from fasTrack project
+from fasTrack.celery import app as celery_app
+
+# This file can be left empty or used for app-specific Celery configurations
+__all__ = ('celery_app',)
+
 

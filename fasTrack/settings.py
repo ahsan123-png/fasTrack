@@ -154,5 +154,5 @@ GOOGLE_REDIRECT_URI = "https://api.fastrakconnect.com/google-drive-callback/"
 # CELERY_BROKER_URL = 'redis://localhost:6379/0'  # or your preferred broker
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
-CELERY_BROKER_URL = 'redis://13.53.58.62:6379/0'
-CELERY_RESULT_BACKEND = 'redis://13.53.58.62:6379/0'
+CELERY_BROKER_URL = 'redis://13.60.13.74:6379/0'
+CELERY_RESULT_BACKEND = 'redis://13.60.13.74:6379/0'

@@ -37,6 +37,3 @@ def send_document_expiry_notification(document_id):
         print(f"Error sending email: {str(e)}")
 
 
-@shared_task
-def notify_user():
-    print("Notification task executed!")

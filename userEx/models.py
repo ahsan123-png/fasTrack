@@ -175,12 +175,17 @@ class PositionInformation(models.Model):
         (FULL_TIME, 'Full Time'),
         (PART_TIME, 'Part Time')
     ]
-
+    SHIFT_6AM_12PM = '6am - 12pm'
+    SHIFT_12PM_6PM = '12pm - 6pm'
+    SHIFT_6PM_12AM = '6pm - 12am'
     DAY_SHIFT = 'Day'
     NIGHT_SHIFT = 'Night'
     SHIFT_CHOICES = [
         (DAY_SHIFT, 'Day Shift'),
-        (NIGHT_SHIFT, 'Night Shift')
+        (NIGHT_SHIFT, 'Night Shift'),
+        (SHIFT_6AM_12PM, '6am - 12pm'),
+        (SHIFT_12PM_6PM, '12pm - 6pm'),
+        (SHIFT_6PM_12AM, '6pm - 12am')
     ]
 
     job_application = models.OneToOneField(JobApplication, on_delete=models.CASCADE, related_name='position_info')

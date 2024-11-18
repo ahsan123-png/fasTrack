@@ -12,6 +12,7 @@ from datetime import datetime
 from rest_framework.decorators import api_view
 from decimal import Decimal
 stripe.api_key = settings.STRIPE_SECRET_KEY
+# ================ views ================
 class CreateClientAPIView(APIView):
     def post(self, request, *args, **kwargs):
         # Extract data from the request body

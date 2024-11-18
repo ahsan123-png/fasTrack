@@ -10,7 +10,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 class PositionInformationSerializer(serializers.ModelSerializer):
     class Meta:
         model = PositionInformation
-        fields = ['job_application', 'position_applied_for', 'employment_type', 'preferred_shift', 'applied_date']
+        fields = '__all__'
 
 class ExperienceSerializer(serializers.ModelSerializer):
     class Meta:

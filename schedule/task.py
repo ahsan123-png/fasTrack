@@ -35,3 +35,8 @@ def send_document_expiry_notification(document_id):
         print(f"Document with id {document_id} does not exist.")
     except Exception as e:
         print(f"Error sending email: {str(e)}")
+
+
+@shared_task
+def notify_user():
+    print("Notification task executed!")

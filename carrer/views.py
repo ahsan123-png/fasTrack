@@ -5,7 +5,6 @@ from rest_framework import status
 from userEx.models import *
 from .serializer import *
 from django.shortcuts import get_object_or_404
-
 # Step 1: Basic Information
 class BasicInformationView(APIView):
     def post(self, request):
@@ -20,8 +19,6 @@ class BasicInformationView(APIView):
             }, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # Step 2: Position Information
 class PositionInformationView(APIView):
     def post(self, request):
@@ -35,8 +32,6 @@ class PositionInformationView(APIView):
             serializer.save()
             return Response({"message": "Position Information saved successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # Step 3: Experience
 class ExperienceView(APIView):
     def post(self, request):
@@ -49,8 +44,6 @@ class ExperienceView(APIView):
             serializer.save()
             return Response({"message": "Experience saved successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # Step 4: Skills & Assessments
 class SkillsAssessmentView(APIView):
     def post(self, request):
@@ -63,8 +56,6 @@ class SkillsAssessmentView(APIView):
             serializer.save()
             return Response({"message": "Skills Assessment saved successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # Step 5: Education
 class EducationView(APIView):
     def post(self, request):
@@ -77,8 +68,6 @@ class EducationView(APIView):
             serializer.save()
             return Response({"message": "Education saved successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # Step 6: Additional Information
 class AdditionalInformationView(APIView):
     def post(self, request):
@@ -91,8 +80,6 @@ class AdditionalInformationView(APIView):
             serializer.save()
             return Response({"message": "Additional Information saved successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # Step 7 & 8: Media Uploads
 class MediaUploadsView(APIView):
     def post(self, request):
@@ -111,7 +98,6 @@ def get_applicant_data(request, applicant_id):
         try:
             # Get the JobApplication instance by applicant ID
             applicant = JobApplication.objects.get(id=applicant_id)
-
             # Retrieve related data from all models
             position_info = getattr(applicant, 'position_info', None)
             experiences = applicant.experiences.all()
@@ -119,7 +105,6 @@ def get_applicant_data(request, applicant_id):
             educations = applicant.educations.all()
             additional_info = getattr(applicant, 'additional_info', None)
             media_uploads = getattr(applicant, 'media_uploads', None)
-
             # Prepare a dictionary to store the applicant's complete data
             applicant_data = {
                 "name": applicant.name,
@@ -167,12 +152,9 @@ def get_applicant_data(request, applicant_id):
                     "cover_letter": media_uploads.cover_letter.url if media_uploads and media_uploads.cover_letter else None
                 } if media_uploads else None
             }
-
             # Return JSON response
             return JsonResponse(applicant_data, safe=False)
-
         except JobApplication.DoesNotExist:
             return JsonResponse({"error": "Applicant not found"}, status=404)
-    
     # If the request method is not GET
     return JsonResponse({"error": "Method not allowed"}, status=405)

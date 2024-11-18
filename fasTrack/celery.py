@@ -14,7 +14,7 @@ app = Celery('fasTrack')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Automatically discover tasks in Django apps
-app.autodiscover_tasks()
+app.autodiscover_tasks('schedule')
 
 # Celery Beat schedule (example of using crontab)
 app.conf.beat_schedule = {

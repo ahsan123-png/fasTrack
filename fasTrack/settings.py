@@ -127,12 +127,13 @@ STRIPE_PUBLISHABLE_KEY = 'pk_test_51Pw4qzEnQNLsnCj14FKz4CjTGplHuZb9a72NWOEwOmhpf
 
 # Email Handler
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'mail.fastrakconnect.com'  # SMTP server
+EMAIL_HOST = 'gtxm1256.siteground.biz'  # SMTP server
 EMAIL_PORT = 465
 EMAIL_USE_TLS = False  
-EMAIL_USE_SSL = True  
+EMAIL_USE_SSL = True 
 EMAIL_HOST_USER = 'info@api.fastrakconnect.com' 
 EMAIL_HOST_PASSWORD = 'k&u6?(meE7%' 
+DEFAULT_FROM_EMAIL = 'info@api.fastrakconnect.com'
 #add Cores settings
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True

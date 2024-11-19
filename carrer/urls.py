@@ -10,4 +10,5 @@ urlpatterns = [
     path('additional_information/', AdditionalInformationView.as_view(), name='additional_information'),
     path('Media_uploadsView/', MediaUploadsView.as_view(), name='Media_uploadsView-8'),
     path('get/all/<int:applicant_id>', get_applicant_data, name='get_applicant_data'),
+    path('get/all/<int:applicant_id>/', ApplicantDetailView.as_view(), name='applicant-detail'),
 ]

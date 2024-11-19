@@ -67,6 +67,12 @@ class Order(models.Model):
     sales_order_number = models.CharField(max_length=20, unique=True, verbose_name="Sales Order No *")
     order_date = models.DateField(default=timezone.now, verbose_name="Date of Order *")
     client = models.ForeignKey(Client, on_delete=models.CASCADE, verbose_name="Client ID *", default=None)
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
     def generate_order_id(self):
         """Generate a 4-digit unique order ID."""

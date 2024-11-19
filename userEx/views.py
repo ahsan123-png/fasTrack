@@ -103,6 +103,8 @@ def serviceSelectionView(request, order_id):
     if payment_method == 'credit_card':
         processing_fee = total_price * Decimal('0.02')  # 2% processing fee for credit card
         total_price += processing_fee
+    else:
+        send_invoice_email(order, order.client.client_email)
     service_selection, created = ServiceSelection.objects.get_or_create(
         order=order,
         defaults={
@@ -252,30 +254,58 @@ def stripe_webhook(request):
         return JsonResponse({'message': 'Event type not handled'}, status=status.HTTP_200_OK)
 # ================== send mail =================
 def send_invoice_email(order, client_email):
-    # Prepare the email subject and body using an HTML template
-    subject = f"Invoice for Order {order.id}"
-    message = render_to_string('emails/order_invoice.html', {
-        'order_id': order.id,
-        'customer_name': order.client.business_name,
-        'status': order.status,
-        'total_price': order.total_price,
-        'service_plan_name': order.service_plan.name,
-        'service_plan_price': order.service_plan.price,
-        'multilingual_agents': order.multilingual_support_agents,
-        'multilingual_support_price': order.multilingual_support_agents * 100.00,
-        'after_hours': order.after_hours_support_hours,
-        'after_hours_support_price': order.after_hours_support_hours * 10.00,
-        'technical_support_hours': order.technical_support_hours,
-        'technical_support_price': order.technical_support_hours * 10.00,
-        'fastrak_price': order.fastrak_briefcase_price,
-        'starter_prosiwo_price': order.starter_prosiwo_price,
-    })
+    """
+    Sends an invoice email to the client for a specific order.
+    """
+    # Prepare the email subject
+    subject = f"Invoice for Order #{order.sales_order_number}"
+    
+    # Get the service selection and billing details
+    service_selection = order.service_selections.first()  # Assuming one service selection per order
+    billing = order.billing.first()  # Assuming one billing record per order
+    
+    if not service_selection or not billing:
+        return f"Order #{order.sales_order_number} does not have complete service or billing details."
+    
+    # Prepare the message details
+    message = (
+        f"Dear {order.client.business_name},\n\n"
+        f"Thank you for your business. Please find the details of your order below:\n\n"
+        f"Order Details:\n"
+        f"Order ID: {order.order_id}\n"
+        f"Sales Order Number: {order.sales_order_number}\n"
+        f"Order Date: {order.order_date}\n"
+        f"\n"
+        f"Service Plan: {service_selection.service_plan.name}\n"
+        f"Service Plan Price: ${service_selection.service_plan.price}\n"
+        f"Multilingual Support Agents: {service_selection.multilingual_support_agents}\n"
+        f"Multilingual Support Price: ${service_selection.multilingual_support_agents * Decimal('200.00')}\n"
+        f"After-Hours Support Hours: {service_selection.after_hours_support_hours}\n"
+        f"After-Hours Support Price: ${service_selection.after_hours_support_hours * Decimal('10.00')}\n"
+        f"Technical Support Hours: {service_selection.technical_support_hours}\n"
+        f"Technical Support Price: ${service_selection.technical_support_hours * Decimal('10.00')}\n"
+        f"Fastrak Briefcase Price: ${service_selection.fastrak_briefcase_price}\n"
+        f"Starter Prosiwo Price: ${service_selection.starter_prosiwo_price}\n"
+        f"\n"
+        f"Billing Details:\n"
+        f"Billing Cycle: {billing.get_billing_cycle_display()}\n"
+        f"Payment Method: {billing.get_payment_method_display()}\n"
+        f"Discount: ${billing.discount}\n"
+        f"Total Amount: ${billing.total_amount}\n\n"
+        f"Thank you for choosing our services. If you have any questions, feel free to contact us.\n\n"
+        f"Best Regards,\n"
+        f"Your Company Team"
+    )
 
     # Send the email
-    send_mail(
-        subject,
-        message,
-        settings.EMAIL_HOST_USER,  # From email (use the email in your settings)
-        [client_email],  # To email (use the email provided by Stripe)
-        fail_silently=False,
-    )
+    try:
+        send_mail(
+            subject,
+            message,
+            settings.EMAIL_HOST_USER,
+            [client_email],
+            fail_silently=False,
+        )
+        return f"Invoice email successfully sent to {client_email} for Order #{order.sales_order_number}."
+    except Exception as e:
+        return f"Failed to send invoice email to {client_email}. Error: {e}"

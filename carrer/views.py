@@ -158,3 +158,38 @@ def get_applicant_data(request, applicant_id):
             return JsonResponse({"error": "Applicant not found"}, status=404)
     # If the request method is not GET
     return JsonResponse({"error": "Method not allowed"}, status=405)
+
+#================= get Data by ID ==================#
+class ApplicantDetailView(APIView):
+    def get(self, request, applicant_id):
+        try:
+            # Fetch the JobApplication instance by applicant_id
+            applicant = get_object_or_404(JobApplication, id=applicant_id)
+            position_info = applicant.position_info
+            experiences = applicant.experiences.all()
+            skills_assessment = applicant.skills_assessment
+            educations = applicant.educations.all()
+            additional_info = applicant.additional_info
+            media_uploads = applicant.media_uploads
+            position_info_serializer = PositionInformationSerializer(position_info)
+            experiences_serializer = ExperienceSerializer(experiences, many=True)
+            skills_assessment_serializer = SkillsAssessmentSerializer(skills_assessment)
+            educations_serializer = EducationSerializer(educations, many=True)
+            additional_info_serializer = AdditionalInformationSerializer(additional_info)
+            media_uploads_serializer = MediaUploadsSerializer(media_uploads)
+            applicant_data = {
+                "name": applicant.name,
+                "email": applicant.email,
+                "phone": applicant.phone,
+                "address": applicant.address,
+                "linkedin_profile": applicant.linkedin_profile,
+                "position_info": position_info_serializer.data,
+                "experiences": experiences_serializer.data,
+                "skills_assessment": skills_assessment_serializer.data,
+                "educations": educations_serializer.data,
+                "additional_info": additional_info_serializer.data,
+                "media_uploads": media_uploads_serializer.data,
+            }
+            return Response(applicant_data, status=status.HTTP_200_OK)
+        except JobApplication.DoesNotExist:
+            return Response({"error": "Applicant not found."}, status=status.HTTP_404_NOT_FOUND)

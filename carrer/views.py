@@ -5,6 +5,9 @@ from rest_framework import status
 from userEx.models import *
 from .serializer import *
 from django.shortcuts import get_object_or_404
+from django.core.mail import send_mail
+from django.db.models import Prefetch
+from django.conf import settings
 # Step 1: Basic Information
 class BasicInformationView(APIView):
     def post(self, request):
@@ -90,7 +93,14 @@ class MediaUploadsView(APIView):
         serializer = MediaUploadsSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Media Uploads saved successfully."}, status=status.HTTP_201_CREATED)
+            job_application.is_complete = True
+            job_application.save()
+
+            # Check if the application is complete and send emails
+            if job_application.is_complete:
+                send_application_emails(job_application)
+
+            return Response({"message": "Media uploaded and application completed successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 def get_applicant_data(request, applicant_id):
@@ -160,36 +170,122 @@ def get_applicant_data(request, applicant_id):
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 #================= get Data by ID ==================#
-class ApplicantDetailView(APIView):
-    def get(self, request, applicant_id):
-        try:
-            # Fetch the JobApplication instance by applicant_id
-            applicant = get_object_or_404(JobApplication, id=applicant_id)
-            position_info = applicant.position_info
-            experiences = applicant.experiences.all()
-            skills_assessment = applicant.skills_assessment
-            educations = applicant.educations.all()
-            additional_info = applicant.additional_info
-            media_uploads = applicant.media_uploads
-            position_info_serializer = PositionInformationSerializer(position_info)
-            experiences_serializer = ExperienceSerializer(experiences, many=True)
-            skills_assessment_serializer = SkillsAssessmentSerializer(skills_assessment)
-            educations_serializer = EducationSerializer(educations, many=True)
-            additional_info_serializer = AdditionalInformationSerializer(additional_info)
-            media_uploads_serializer = MediaUploadsSerializer(media_uploads)
+class GetAllApplicantsView(APIView):
+    def get(self, request):
+        job_applications = JobApplication.objects.prefetch_related(
+            Prefetch('experiences', queryset=Experience.objects.only(
+                'job_title', 'company', 'duration_from', 'duration_to', 'key_responsibilities'
+            )),
+            Prefetch('educations', queryset=Education.objects.only(
+                'degree', 'institute', 'graduation_year'
+            ))
+        ).select_related(
+            'skills_assessment', 'additional_info', 'media_uploads', 'position_info'
+        )
+        applicants_data = []
+        for applicant in job_applications:
             applicant_data = {
+                "applicant_id": applicant.id,  # Add the applicant_id here
                 "name": applicant.name,
                 "email": applicant.email,
                 "phone": applicant.phone,
                 "address": applicant.address,
                 "linkedin_profile": applicant.linkedin_profile,
-                "position_info": position_info_serializer.data,
-                "experiences": experiences_serializer.data,
-                "skills_assessment": skills_assessment_serializer.data,
-                "educations": educations_serializer.data,
-                "additional_info": additional_info_serializer.data,
-                "media_uploads": media_uploads_serializer.data,
+                "is_complete": applicant.is_complete,
             }
-            return Response(applicant_data, status=status.HTTP_200_OK)
-        except JobApplication.DoesNotExist:
-            return Response({"error": "Applicant not found."}, status=status.HTTP_404_NOT_FOUND)
+            if hasattr(applicant, 'position_info') and applicant.position_info:
+                applicant_data.update({
+                    "position_applied_for": applicant.position_info.position_applied_for,
+                    "employment_type": applicant.position_info.employment_type,
+                    "preferred_shift": applicant.position_info.preferred_shift,
+                    "applied_date": applicant.position_info.applied_date,
+                })
+            else:
+                applicant_data.update({
+                    "position_applied_for": None,
+                    "employment_type": None,
+                    "preferred_shift": None,
+                    "applied_date": None,
+                })
+
+            applicant_data['experiences'] = [
+                {
+                    "job_title": exp.job_title,
+                    "company": exp.company,
+                    "duration_from": exp.duration_from,
+                    "duration_to": exp.duration_to,
+                    "key_responsibilities": exp.key_responsibilities,
+                }
+                for exp in applicant.experiences.all()
+            ]
+            if hasattr(applicant, 'skills_assessment') and applicant.skills_assessment:
+                applicant_data['skills_assessment'] = {
+                    "languages": applicant.skills_assessment.languages,
+                    "tech_skills": applicant.skills_assessment.tech_skills,
+                    "certificates": applicant.skills_assessment.certificates,
+                    "tech_experience_description": applicant.skills_assessment.tech_experience_description,
+                }
+            else:
+                applicant_data['skills_assessment'] = None
+            applicant_data['educations'] = [
+                {
+                    "degree": edu.degree,
+                    "institute": edu.institute,
+                    "graduation_year": edu.graduation_year,
+                }
+                for edu in applicant.educations.all()
+            ]
+            if hasattr(applicant, 'additional_info') and applicant.additional_info:
+                applicant_data['additional_info'] = {
+                    "why_interested": applicant.additional_info.why_interested,
+                    "strong_fit_reason": applicant.additional_info.strong_fit_reason,
+                    "eligible_to_work": applicant.additional_info.eligible_to_work,
+                    "source_of_opportunity": applicant.additional_info.source_of_opportunity,
+                }
+            else:
+                applicant_data['additional_info'] = None
+            if hasattr(applicant, 'media_uploads') and applicant.media_uploads:
+                applicant_data['media_uploads'] = {
+                    "video": applicant.media_uploads.video.url if applicant.media_uploads.video else None,
+                    "resume": applicant.media_uploads.resume.url if applicant.media_uploads.resume else None,
+                    "cover_letter": applicant.media_uploads.cover_letter.url if applicant.media_uploads.cover_letter else None,
+                }
+            else:
+                applicant_data['media_uploads'] = None
+            applicants_data.append(applicant_data)
+        return Response(applicants_data, status=status.HTTP_200_OK)
+
+
+# =================== send mails to admins and applicants ====================================
+def send_application_emails(job_application):
+    # Send email to applicant
+    subject_applicant = f"Your Job Application is Complete, {job_application.name}!"
+    message_applicant = (
+        f"Dear {job_application.name},\n\n"
+        f"Thank you for submit your application for the {job_application.position_info.position_applied_for} position. "
+        f"We have successfully received all the required information and will review your application soon.\n\n"
+        f"Best regards,\n"
+        f"fastrak Connect Recruitment Team"
+    )
+    try:
+        send_mail(subject_applicant, message_applicant, settings.EMAIL_HOST_USER, [job_application.email])
+    except Exception as e:
+        print(f"Failed to send email to applicant: {str(e)}")
+
+    # Send email to admin
+    subject_admin = f"New Job Application Completed: {job_application.name}"
+    message_admin = (
+        f"Dear Admin,\n\n"
+        f"The job application for {job_application.name} has been completed. Here are the details:\n\n"
+        f"Name: {job_application.name}\n"
+        f"Email: {job_application.email}\n"
+        f"Phone: {job_application.phone}\n"
+        f"Position Applied For: {job_application.position_info.position_applied_for}\n\n"
+        f"Please review the application at your earliest convenience.\n\n"
+        f"Best regards,\n"
+        f"The System"
+    )
+    try:
+        send_mail(subject_admin, message_admin, settings.EMAIL_HOST_USER, [settings.ADMIN_EMAIL])
+    except Exception as e:
+        print(f"Failed to send email to admin: {str(e)}")

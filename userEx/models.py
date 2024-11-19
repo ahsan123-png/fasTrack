@@ -172,6 +172,7 @@ class JobApplication(models.Model):
     linkedin_profile = models.URLField(blank=True, null=True)
     terms_agreed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_complete = models.BooleanField(default=False)
     def __str__(self):
         return self.name
 class PositionInformation(models.Model):

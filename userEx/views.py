@@ -294,7 +294,7 @@ def send_invoice_email(order, client_email):
         f"Total Amount: ${billing.total_amount}\n\n"
         f"Thank you for choosing our services. If you have any questions, feel free to contact us.\n\n"
         f"Best Regards,\n"
-        f"Your Company Team"
+        f"FasTrak Connect Team"
     )
 
     # Send the email

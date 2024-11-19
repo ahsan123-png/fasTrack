@@ -24,6 +24,7 @@ def admin_signup_view(request):
                     "admin_phone": admin.admin_phone,
                     "admin_gender": admin.admin_gender,
                     "admin_password": admin.admin_password,
+                    "is_Admin": admin.is_Admin,
                 },
                 "token": token,
             }
@@ -49,6 +50,7 @@ def admin_login(request):
                 "email": admin.email,
                 "admin_phone": admin.admin_phone,
                 "admin_gender": admin.admin_gender,
+                "is_Admin": admin.is_Admin,
             },
             "token": token.key
         }, status=status.HTTP_200_OK)

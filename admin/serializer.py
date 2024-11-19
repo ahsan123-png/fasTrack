@@ -7,7 +7,7 @@ from rest_framework.authtoken.models import Token  # For token generation
 class AdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Admin
-        fields = ['first_name', 'last_name', 'email', 'admin_phone', 'admin_gender', 'admin_password']
+        fields = ['first_name', 'last_name', 'email', 'admin_phone', 'admin_gender', 'admin_password','is_Admin']
         extra_kwargs = {'admin_password': {'write_only': True}}  # Password is write-only
     def validate_email(self, value):
         """Check if email already exists."""

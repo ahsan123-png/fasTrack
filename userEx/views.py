@@ -309,3 +309,10 @@ def send_invoice_email(order, client_email):
         return f"Invoice email successfully sent to {client_email} for Order #{order.sales_order_number}."
     except Exception as e:
         return f"Failed to send invoice email to {client_email}. Error: {e}"
+
+
+# ====================== Clean Phone Number ===================
+def clean_phone_number(phone_number):
+    chars_to_remove = "+- ()"
+    translator = str.maketrans('', '', chars_to_remove)
+    return phone_number.translate(translator)

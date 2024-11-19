@@ -266,3 +266,17 @@ class MediaUploads(models.Model):
 
     def __str__(self):
         return f"Uploads for {self.job_application}"
+# ================ Admin =============
+class Admin(User):
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    ]
+    admin_phone = models.CharField(max_length=50, unique=True)
+    admin_password = models.CharField(max_length=128)
+    admin_gender = models.CharField(max_length=15, choices=GENDER_CHOICES)
+    is_Admin = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.username})"

@@ -136,6 +136,7 @@ EMAIL_USE_SSL = True
 EMAIL_HOST_USER = 'info@api.fastrakconnect.com' 
 EMAIL_HOST_PASSWORD = 'k&u6?(meE7%' 
 DEFAULT_FROM_EMAIL = 'info@api.fastrakconnect.com'
+ADMIN_EMAIL='rajaahs123@gmail.com'
 #add Cores settings
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True

@@ -13,9 +13,16 @@ class PositionInformationSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ExperienceSerializer(serializers.ModelSerializer):
+    job_title = serializers.CharField(required=False, allow_null=True)
+    company = serializers.CharField(required=False, allow_null=True)
+    duration_from = serializers.DateField(required=False, allow_null=True)
+    duration_to = serializers.DateField(required=False, allow_null=True)
+    key_responsibilities = serializers.CharField(required=False, allow_null=True)
+
     class Meta:
         model = Experience
         fields = ['job_application', 'job_title', 'company', 'duration_from', 'duration_to', 'key_responsibilities']
+
 
 class SkillsAssessmentSerializer(serializers.ModelSerializer):
     class Meta:

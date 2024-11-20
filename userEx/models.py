@@ -210,11 +210,11 @@ class PositionInformation(models.Model):
 # Step 3: Experience
 class Experience(models.Model):
     job_application = models.ForeignKey(JobApplication, on_delete=models.CASCADE, related_name='experiences')
-    job_title = models.CharField(max_length=100)
-    company = models.CharField(max_length=100)
-    duration_from = models.DateField()
+    job_title = models.CharField(max_length=100, null=True, blank=True)
+    company = models.CharField(max_length=100, null=True, blank=True)
+    duration_from = models.DateField(null=True, blank=True)
     duration_to = models.DateField(null=True, blank=True)
-    key_responsibilities = models.TextField()
+    key_responsibilities = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return self.job_title

@@ -47,6 +47,7 @@ class ExperienceView(APIView):
             serializer.save()
             return Response({"message": "Experience saved successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 # Step 4: Skills & Assessments
 class SkillsAssessmentView(APIView):
     def post(self, request):

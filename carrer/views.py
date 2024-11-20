@@ -92,15 +92,20 @@ class MediaUploadsView(APIView):
         data['job_application'] = job_application.id
         serializer = MediaUploadsSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
+            media_upload = serializer.save()
             job_application.is_complete = True
             job_application.save()
-
-            # Check if the application is complete and send emails
             if job_application.is_complete:
                 send_application_emails(job_application)
-
-            return Response({"message": "Media uploaded and application completed successfully."}, status=status.HTTP_201_CREATED)
+            response_data = {
+                "message": "Media uploaded and application completed successfully.",
+                "uploaded_files": {
+                    "video": media_upload.video.url if media_upload.video else None,
+                    "resume": media_upload.resume.url if media_upload.resume else None,
+                    "cover_letter": media_upload.cover_letter.url if media_upload.cover_letter else None,
+                }
+            }
+            return Response(response_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 def get_applicant_data(request, applicant_id):

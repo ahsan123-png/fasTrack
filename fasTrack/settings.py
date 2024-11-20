@@ -146,18 +146,28 @@ DEFAULT_FROM_EMAIL = 'info@api.fastrakconnect.com'
 ADMIN_EMAIL='rajaahs123@gmail.com'
 #add Cores settings
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (for development)
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+]
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
-    "authorization",  # If you're using JWT or other tokens
+    "authorization",
     "content-type",
     "dnt",
     "origin",
     "user-agent",
-    "x-csrftoken",  # If you're using CSRF tokens
+    "x-csrftoken",
     "x-requested-with",
 ]
+CORS_ALLOW_CREDENTIALS = True
+
 GOOGLE_CLIENT_SECRETS_JSON = os.path.join(BASE_DIR, 'credentials', 'client_secret.json')
 with open(GOOGLE_CLIENT_SECRETS_JSON, 'r') as file:
     google_creds = json.load(file)['web']  # Assuming the credentials are under the 'web' key

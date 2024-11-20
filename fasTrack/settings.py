@@ -60,12 +60,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'fasTrack.wsgi.application'
 
-CORS_ALLOWED_ORIGINS = [
-    "https://order.fastrakconnect.com",  # Frontend domain
-]
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://.*\.fastrakconnect\.com$",  # Matches all subdomains of fastrakconnect.com
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "https://order.fastrakconnect.com",  # Frontend domain
+# ]
+# CORS_ALLOWED_ORIGIN_REGEXES = [
+#     r"^https://.*\.fastrakconnect\.com$",  # Matches all subdomains of fastrakconnect.com
+# ]
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases

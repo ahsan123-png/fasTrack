@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.db import models
 from django.utils import timezone
 import random
+from django.utils.text import slugify
+# ================ models =================
 class Client(models.Model):
     client_id = models.CharField(max_length=50, unique=True, verbose_name="Client ID *")  # Unique Client ID
     client_email  = models.EmailField(max_length=255, unique=True, verbose_name="Email Address *")  # Email field
@@ -260,10 +262,13 @@ class AdditionalInformation(models.Model):
 
 # Step 7 & 8: Media Uploads
 class MediaUploads(models.Model):
+    def upload_to_path(instance, filename):
+        applicant_name = slugify(instance.job_application.name or "unknown")
+        return f"uploads/{applicant_name}/{filename}"
     job_application = models.OneToOneField(JobApplication, on_delete=models.CASCADE, related_name='media_uploads')
-    video = models.FileField(upload_to='applicant_videos/', blank=True, null=True)
-    resume = models.FileField(upload_to='resumes/',null=True, blank=True)
-    cover_letter = models.FileField(upload_to='cover_letters/',null=True, blank=True)
+    video = models.FileField(upload_to=upload_to_path, blank=True, null=True)
+    resume = models.FileField(upload_to=upload_to_path, blank=True, null=True)
+    cover_letter = models.FileField(upload_to=upload_to_path, blank=True, null=True)
 
     def __str__(self):
         return f"Uploads for {self.job_application}"

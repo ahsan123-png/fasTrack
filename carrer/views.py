@@ -134,6 +134,7 @@ def get_applicant_data(request, applicant_id):
                 "applied_date": position_info.applied_date if position_info else None,
                 "experiences": [
                     {
+                        "exp_id": exp.id,
                         "job_title": exp.job_title,
                         "company": exp.company,
                         "duration_from": exp.duration_from,
@@ -143,6 +144,7 @@ def get_applicant_data(request, applicant_id):
                     for exp in experiences
                 ],
                 "skills_assessment": {
+                    "skills_assessment_id": skills_assessment.id if skills_assessment else None,
                     "languages": skills_assessment.languages if skills_assessment else None,
                     "tech_skills": skills_assessment.tech_skills if skills_assessment else None,
                     "certificates": skills_assessment.certificates if skills_assessment else None,
@@ -150,6 +152,7 @@ def get_applicant_data(request, applicant_id):
                 } if skills_assessment else None,
                 "educations": [
                     {
+                        "degree_id": edu.id,
                         "degree": edu.degree,
                         "institute": edu.institute,
                         "graduation_year": edu.graduation_year,
@@ -157,6 +160,7 @@ def get_applicant_data(request, applicant_id):
                     for edu in educations
                 ],
                 "additional_info": {
+                    "additional_info": additional_info.id if additional_info else None,
                     "why_interested": additional_info.why_interested if additional_info else None,
                     "strong_fit_reason": additional_info.strong_fit_reason if additional_info else None,
                     "eligible_to_work": additional_info.eligible_to_work if additional_info else None,
@@ -295,3 +299,97 @@ def send_application_emails(job_application):
         send_mail(subject_admin, message_admin, settings.EMAIL_HOST_USER, [settings.ADMIN_EMAIL])
     except Exception as e:
         print(f"Failed to send email to admin: {str(e)}")
+
+# ====================== update Patch APIs =========================
+# Step 1: Basic Information
+class BasicInformationUpdateView(APIView):
+    def patch(self, request, pk):
+        job_application = get_object_or_404(JobApplication, pk=pk)
+        serializer = JobApplicationSerializer(job_application, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Job application updated successfully."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Step 2: Position Information
+class PositionInformationUpdateView(APIView):
+    def patch(self, request, pk):
+        # Find PositionInformation by JobApplication's pk
+        position_info = get_object_or_404(PositionInformation, job_application__id=pk)
+        serializer = PositionInformationSerializer(position_info, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Position Information updated successfully."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Step 3: Experience
+class ExperienceUpdateView(APIView):
+    def patch(self, request, job_application_id):
+        experiences = Experience.objects.filter(job_application__id=job_application_id)
+        if not experiences.exists():
+            return Response({"detail": "No experiences found for the given job application."}, status=status.HTTP_404_NOT_FOUND)
+        data = request.data.get('experiences', [])
+        if not data:
+            return Response({"detail": "No experiences provided in the request."}, status=status.HTTP_400_BAD_REQUEST)
+        for experience_data in data:
+            experience_id = experience_data.get('id')
+            experience = experiences.filter(id=experience_id).first()
+            if not experience:
+                return Response({"detail": f"Experience with ID {experience_id} not found for the given job application."}, status=status.HTTP_404_NOT_FOUND)
+            serializer = ExperienceSerializer(experience, data=experience_data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Experiences updated successfully."}, status=status.HTTP_200_OK)
+
+# Step 4: Skills & Assessments
+class SkillsAssessmentUpdateView(APIView):
+    def patch(self, request, pk):
+        job_application = get_object_or_404(JobApplication, id=pk)
+        skills_assessment = get_object_or_404(SkillsAssessment, job_application=job_application)
+        serializer = SkillsAssessmentSerializer(skills_assessment, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Skills Assessment updated successfully."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# Step 5: Education
+class EducationUpdateView(APIView):
+    def patch(self, request, job_application_id):
+        educations = Education.objects.filter(job_application__id=job_application_id)
+        if not educations.exists():
+            return Response({"detail": "No educations found for the given job application."}, status=status.HTTP_404_NOT_FOUND)
+        data = request.data.get('educations', [])
+        if not data:
+            return Response({"detail": "No education data provided in the request."}, status=status.HTTP_400_BAD_REQUEST)
+        for education_data in data:
+            education_id = education_data.get('id')
+            education = educations.filter(id=education_id).first()
+            if not education:
+                return Response({"detail": f"Education with ID {education_id} not found for the given job application."}, status=status.HTTP_404_NOT_FOUND)
+            serializer = EducationSerializer(education, data=education_data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Education records updated successfully."}, status=status.HTTP_200_OK)
+# Step 6: Additional Information
+class AdditionalInformationUpdateView(APIView):
+    def patch(self, request, pk):
+        job_application = get_object_or_404(JobApplication, id=pk)
+        additional_info = get_object_or_404(AdditionalInformation, job_application=job_application)
+        serializer = AdditionalInformationSerializer(additional_info, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Additional Information updated successfully."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Step 7 & 8: Media Uploads
+class MediaUploadsUpdateView(APIView):
+    def patch(self, request, pk):
+        media_upload = get_object_or_404(MediaUploads, pk=pk)
+        serializer = MediaUploadsSerializer(media_upload, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Media Uploads updated successfully."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

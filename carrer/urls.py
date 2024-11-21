@@ -11,4 +11,12 @@ urlpatterns = [
     path('Media_uploadsView/', MediaUploadsView.as_view(), name='Media_uploadsView-8'),
     path('get/all/<int:applicant_id>', get_applicant_data, name='get_applicant_data'),
     path('get/all', GetAllApplicantsView.as_view(), name='applicant-detail'),
+    # ========= Update APIs =========
+    path('update-basic-info/<int:pk>/', BasicInformationUpdateView.as_view(), name='update-basic-info'),
+    path('update-position-info/<int:pk>/', PositionInformationUpdateView.as_view(), name='update-position-info'),
+    path('update-experience/<int:job_application_id>/', ExperienceUpdateView.as_view(), name='update-experience'),
+    path('update-skills/<int:pk>/', SkillsAssessmentUpdateView.as_view(), name='update-skills'),
+    path('update-education/<int:job_application_id>/', EducationUpdateView.as_view(), name='update-education'),
+    path('update-additional-info/<int:pk>/', AdditionalInformationUpdateView.as_view(), name='update-additional-info'),
+    path('update-media/<int:pk>/', MediaUploadsUpdateView.as_view(), name='update-media'),
 ]

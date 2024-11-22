@@ -63,15 +63,17 @@ class SkillsAssessmentView(APIView):
 # Step 5: Education
 class EducationView(APIView):
     def post(self, request):
-        job_application_id = request.data[0].get('job_application')
+        job_application_id = request.data.get('job_application', None)
+        if not job_application_id:
+            return Response({"detail": "job_application ID is required."}, status=status.HTTP_400_BAD_REQUEST)
         job_application = get_object_or_404(JobApplication, id=job_application_id)
-        for education in request.data:
-            education['job_application'] = job_application_id
-        serializer = EducationSerializer(data=request.data, many=True)
+        request.data['job_application'] = job_application.id
+        serializer = EducationSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Education saved successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 # Step 6: Additional Information
 class AdditionalInformationView(APIView):
     def post(self, request):
@@ -355,24 +357,25 @@ class SkillsAssessmentUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # Step 5: Education
 class EducationUpdateView(APIView):
-    def patch(self, request, job_application_id):
-        educations = Education.objects.filter(job_application__id=job_application_id)
-        if not educations.exists():
-            return Response({"detail": "No educations found for the given job application."}, status=status.HTTP_404_NOT_FOUND)
-        data = request.data.get('educations', [])
-        if not data:
-            return Response({"detail": "No education data provided in the request."}, status=status.HTTP_400_BAD_REQUEST)
-        for education_data in data:
-            education_id = education_data.get('id')
-            education = educations.filter(id=education_id).first()
-            if not education:
-                return Response({"detail": f"Education with ID {education_id} not found for the given job application."}, status=status.HTTP_404_NOT_FOUND)
-            serializer = EducationSerializer(education, data=education_data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"message": "Education records updated successfully."}, status=status.HTTP_200_OK)
+    def patch(self, request, education_id):
+        job_application = get_object_or_404(JobApplication, id=education_id)
+        education = Education.objects.filter(job_application=job_application).first()
+
+        if not education:
+            return Response(
+                {"detail": "No education found for the given applicant ID."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Partially update the single education record
+        serializer = EducationSerializer(education, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Education updated successfully."}, status=status.HTTP_200_OK)
+
+        # Return validation errors
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 # Step 6: Additional Information
 class AdditionalInformationUpdateView(APIView):
     def patch(self, request, pk):
